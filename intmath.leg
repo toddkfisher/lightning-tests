@@ -1,6 +1,6 @@
+%{
 // LEG grammar for integer expressions.
 // Create parse tree.  From parse tree generate code using GNU lighting.
-%{
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,9 +20,9 @@ typedef struct PT_NODE {
   struct PT_NODE *left, *right;
   PT_NODE_TYPE type;
   int operand;
- };
 } PT_NODE;
 
+//-------------------------------------------------------------------------------
 // TODO: add node to some kind of list so that it can be deallocated if
 // there's an error.  Can also use list to deallocate in normal case
 // as well.
@@ -36,11 +36,9 @@ typedef struct PT_NODE {
 
 %}
 
-//------------------------------------------------------------------------------
-// expression rules
-
 stmt = WS e:expr EOL
-       { printf("eval: %d\n", eval(e)); }
+       { printf("expr\n"); }
+       # { printf("eval: %d\n", eval(e)); }
      | (!EOL . )* EOL
        { printf("error\n"); }
 
@@ -48,41 +46,61 @@ expr = sum
 
 sum = left_prod:product
       (parent:ADD-OP right_prod:product
-       {
-         parent->left = left;
-         parent->right = right;
-         left = parent;
-       }
+      # {
+      #   parent->left = left;
+      #   parent->right = right;
+      #   left = parent;
+      # }
+      { printf("addop\n"); }
       )*
-      { $$ = left; }
+      # { $$ = left; }
 
 product = left:factor
           (parent:MULT-OP right:factor
-           {
-             parent->left = left;
-             parent->right = right;
-             left = parent;
-           }
+           # {
+           #   parent->left = left;
+           #   parent->right = right;
+           #   left = parent;
+           # }
+           { printf("mulop\n"); }
           )*
-          { $$ = left; }
-
-//------------------------------------------------------------------------------
-// rules for tokens
+          # { $$ = left; }
 
 WS = [ \t]*
 
 EOL = '\n' | '\r\n' | '\r' | ';'
 
-ADD-OP = WS <'+' | '-'>  WS
-         { NEW_NODE(T_OPERATOR, yytext[0], $$); }
+ADD-OP = WS <('+' | '-')>  WS    # parens needed here
+         # { NEW_NODE(T_OPERATOR, yytext[0], $$); }
+         { printf("ADD-OP: (%s)\n", yytext); }
 
-MULT-OP = WS <'*' | '-'> WS
-          { NEW_NODE(T_OPERATOR, yytext[0], $$); }
+MULT-OP = WS <('*' | '/')> WS    # parens needed here
+          # { NEW_NODE(T_OPERATOR, yytext[0], $$); }
+          { printf("MULT-OP: (%s)\n", yytext); }
 
-FACTOR = i:INT
-         { $$ = i; }
+factor = i:INT
+         { printf("INT FACTOR\n"); }
+         # { $$ = i; }
        | LPAREN e:expr RPAREN
-         { $$ = e; }
+         { printf("'(' expr ')'\n"); }
+         # { $$ = e; }
 
 INT = <(MINUS | PLUS)? [0-9]+>
-      { NEW_NODE(T_OPERAND, atoi(yytext), $$); }
+      { printf("INT %d\n", atoi(yytext)); }
+      # { NEW_NODE(T_OPERAND, atoi(yytext), $$); }
+
+PLUS = WS '+' WS
+
+MINUS = WS '-' WS
+
+LPAREN = WS '(' WS
+
+RPAREN = WS ')' WS
+
+%%
+
+int main()
+{
+  while (yyparse()) { continue; }
+  return 0;
+}
