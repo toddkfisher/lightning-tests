@@ -1,3 +1,5 @@
+// LEG grammar for integer expressions.
+// Create parse tree.  From parse tree generate code using GNU lighting.
 %{
 
 #include <stdlib.h>
