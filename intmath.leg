@@ -36,6 +36,9 @@ typedef struct PT_NODE {
 
 %}
 
+//------------------------------------------------------------------------------
+// expression rules
+
 stmt = WS e:expr EOL
        { printf("eval: %d\n", eval(e)); }
      | (!EOL . )* EOL
@@ -62,6 +65,9 @@ product = left:factor
            }
           )*
           { $$ = left; }
+
+//------------------------------------------------------------------------------
+// rules for tokens
 
 WS = [ \t]*
 
