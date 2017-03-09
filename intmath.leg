@@ -1,0 +1,80 @@
+%{
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#define YYSTYPE PT_NODE *
+
+typedef enum {
+  T_ADD,
+  T_SUB,
+  T_MUL,
+  T_DIV,
+  T_NEG,
+  T_OPERAND
+} PT_NODE_TYPE;
+
+typedef struct PT_NODE {
+  struct PT_NODE *left, *right;
+  PT_NODE_TYPE type;
+  int operand;
+ };
+} PT_NODE;
+
+// TODO: add node to some kind of list so that it can be deallocated if
+// there's an error.  Can also use list to deallocate in normal case
+// as well.
+#define NEW_NODE(type,  node)                   \
+  do {                                          \
+    node = (PT_NODE *) malloc(sizeof(PT_NODE)); \
+    node->left = NULL;                          \
+    node->right = NULL;                         \
+    node->type = type;                          \
+ } while(0)
+
+%}
+
+stmt = WS e:expr EOL
+       { printf("eval: %d\n", eval(e)); }
+     | (!EOL . )* EOL
+       { printf("error\n"); }
+
+expr = sum
+
+sum = left_prod:product
+      (parent:ADD-OP right_prod:product
+       {
+         parent->left = left;
+         parent->right = right;
+         left = parent;
+       }
+      )*
+      { $$ = left; }
+
+product = left:factor
+          (parent:MULT-OP right:factor
+           {
+             parent->left = left;
+             parent->right = right;
+             left = parent;
+           }
+          )*
+          { $$ = left; }
+
+WS = [ \t]*
+
+EOL = '\n' | '\r\n' | '\r' | ';'
+
+ADD-OP = WS <'+' | '-'>  WS
+         { NEW_NODE(T_OPERATOR, yytext[0], $$); }
+
+MULT-OP = WS <'*' | '-'> WS
+          { NEW_NODE(T_OPERATOR, yytext[0], $$); }
+
+FACTOR = i:INT
+         { $$ = i; }
+       | LPAREN e:expr RPAREN
+         { $$ = e; }
+
+INT = <(MINUS | PLUS)? [0-9]+>
+      { NEW_NODE(T_OPERAND, atoi(yytext), $$); }
