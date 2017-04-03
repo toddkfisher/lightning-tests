@@ -4,90 +4,75 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "intmath.h"
 
 #define YYSTYPE PT_NODE *
 
-typedef enum {
-  T_ADD,
-  T_SUB,
-  T_MUL,
-  T_DIV,
-  T_NEG,
-  T_OPERAND
-} PT_NODE_TYPE;
-
-typedef struct PT_NODE {
-  struct PT_NODE *left, *right;
-  PT_NODE_TYPE type;
-  int operand;
-} PT_NODE;
-
-//-------------------------------------------------------------------------------
-// TODO: add node to some kind of list so that it can be deallocated if
-// there's an error.  Can also use list to deallocate in normal case
-// as well.
-#define NEW_NODE(type,  node)                   \
-  do {                                          \
-    node = (PT_NODE *) malloc(sizeof(PT_NODE)); \
-    node->left = NULL;                          \
-    node->right = NULL;                         \
-    node->type = type;                          \
- } while(0)
-
 %}
 
-stmt = WS e:expr EOL
-       { printf("expr\n"); }
-       # { printf("eval: %d\n", eval(e)); }
+stmt = WS e:sum EOL
+       {
+         print_tree(e, 0);
+       }
      | (!EOL . )* EOL
        { printf("error\n"); }
 
 expr = sum
 
-sum = left_prod:product
-      (parent:ADD-OP right_prod:product
-      # {
-      #   parent->left = left;
-      #   parent->right = right;
-      #   left = parent;
-      # }
-      { printf("addop\n"); }
+sum = Left:product
+      (Parent:ADD-OP Right:product
+       {
+         Parent->left = Left;
+         Parent->right = Right;
+         Left = Parent;
+       }
       )*
-      # { $$ = left; }
+      {
+        $$ = Left;
+      }
 
-product = left:factor
-          (parent:MULT-OP right:factor
-           # {
-           #   parent->left = left;
-           #   parent->right = right;
-           #   left = parent;
-           # }
-           { printf("mulop\n"); }
+product = Left:factor
+          (Parent:MULT-OP Right:factor
+           {
+             Parent->left = Left;
+             Parent->right = Right;
+             Left = Parent;
+           }
           )*
-          # { $$ = left; }
+          {
+            $$ = Left;
+          }
 
 WS = [ \t]*
 
 EOL = '\n' | '\r\n' | '\r' | ';'
 
 ADD-OP = WS <('+' | '-')>  WS    # parens needed here
-         # { NEW_NODE(T_OPERATOR, yytext[0], $$); }
-         { printf("ADD-OP: (%s)\n", yytext); }
+         {
+           PT_NODE *node = new_node(yytext[0] == '+' ? T_ADD : T_SUB);
+           $$ = node;
+         }
 
 MULT-OP = WS <('*' | '/')> WS    # parens needed here
-          # { NEW_NODE(T_OPERATOR, yytext[0], $$); }
-          { printf("MULT-OP: (%s)\n", yytext); }
+          {
+            PT_NODE *node = new_node(yytext[0] == '*' ? T_MUL : T_DIV);
+            $$ = node;
+          }
 
-factor = i:INT
-         { printf("INT FACTOR\n"); }
-         # { $$ = i; }
-       | LPAREN e:expr RPAREN
-         { printf("'(' expr ')'\n"); }
-         # { $$ = e; }
-
+factor = LPAREN e:expr RPAREN
+         {
+           $$ = e;
+         }
+       | i:INT
+         {
+           $$ = i;
+         }
 INT = <(MINUS | PLUS)? [0-9]+>
-      { printf("INT %d\n", atoi(yytext)); }
-      # { NEW_NODE(T_OPERAND, atoi(yytext), $$); }
+      {
+        PT_NODE *node = new_node(T_OPERAND);
+        node->operand = atoi(yytext);
+        $$ = node;
+      }
 
 PLUS = WS '+' WS
 
@@ -101,6 +86,9 @@ RPAREN = WS ')' WS
 
 int main()
 {
-  while (yyparse()) { continue; }
+  while (yyparse()) {
+    printf("--------------------\n");
+    continue;
+  }
   return 0;
 }
