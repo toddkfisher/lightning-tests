@@ -12,7 +12,13 @@
 
 stmt = WS e:sum EOL
        {
+         int max_reg = -1;
+         assign_registers(e, 0, &max_reg);
+         printf("Number of registers needed = %d\n", max_reg + 1);
          print_tree(e, 0);
+         printf("\n");
+         print_code(e);
+         free_tree(e);
        }
      | (!EOL . )* EOL
        { printf("error\n"); }
