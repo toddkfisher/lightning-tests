@@ -17,6 +17,8 @@ struct PT_NODE {
   int reg_num;
 };
 
+typedef int (*compiled_expr_fn)(void);
+
 #define NEW_NODE(type,  node)                   \
   do {                                          \
     node = (PT_NODE *) malloc(sizeof(PT_NODE)); \
@@ -31,3 +33,6 @@ void assign_registers(PT_NODE *node, int reg_num, int *max_reg);
 void print_tree(PT_NODE *node, int lev);
 void free_tree(PT_NODE *node);
 void print_code(PT_NODE *node);
+void assign_registers(PT_NODE *node, int reg_num, int *max_reg);
+void tree_walk(PT_NODE *node);
+compiled_expr_fn compile_tree(PT_NODE *node, char *argv0);

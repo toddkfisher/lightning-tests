@@ -1,5 +1,5 @@
 im : im.o intmath.o
-	gcc -o im im.o intmath.o
+	gcc -o im im.o intmath.o -llightning
 
 im.c : intmath.leg
 	leg intmath.leg > im.c

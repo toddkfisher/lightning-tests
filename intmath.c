@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <lightning.h>
 #include "intmath.h"
 
 PT_NODE *new_node(PT_NODE_TYPE type)
@@ -27,6 +28,17 @@ char *operators[] = {
   "-",
   "??"
 };
+
+int regs[] = {
+  JIT_R0,
+  JIT_R1,
+  JIT_R2,
+  JIT_V0,
+  JIT_V1,
+  JIT_V2
+};
+
+static jit_state_t *_jit;
 
 void assign_registers(PT_NODE *node, int reg_num, int *max_reg)
 {
@@ -57,6 +69,57 @@ void free_tree(PT_NODE *node)
   free(node);
 }
 
+#define GEN_OP(i_or_r, node, dest, right)                    \
+do {                                                         \
+  switch(node->type) {                                       \
+    case T_ADD:                                              \
+      jit_add##i_or_r(dest, dest, right);                    \
+      break;                                                 \
+    case T_SUB:                                              \
+      jit_sub##i_or_r(dest, dest, right);                    \
+      break;                                                 \
+    case T_MUL:                                              \
+      jit_mul##i_or_r(dest, dest, right);                    \
+      break;                                                 \
+    case T_DIV:                                              \
+      jit_div##i_or_r(dest, dest, right);                    \
+      break;                                                 \
+    default:                                                 \
+      fprintf(stderr, "Unknown operator: %d\n", node->type); \
+      exit(0);                                               \
+      break;                                                 \
+  }                                                          \
+} while (0)
+
+void tree_walk(PT_NODE *node)
+{
+  int dest_reg = regs[node->reg_num];
+  if (T_OPERAND == node->type) {
+    jit_movi(dest_reg, node->operand);
+  } else {
+    if (T_OPERAND == node->right->type) {
+      tree_walk(node->left);
+      GEN_OP(i, node, dest_reg, node->right->operand);
+    } else {
+      tree_walk(node->right);
+      tree_walk(node->left);
+      GEN_OP(r, node, dest_reg, regs[node->right->reg_num]);
+    }
+  }
+}
+
+compiled_expr_fn compile_tree(PT_NODE *node, char *argv0)
+{
+  compiled_expr_fn fn = NULL;
+  init_jit(argv0);
+  _jit = jit_new_state();
+  jit_prolog();
+  tree_walk(node);
+  jit_epilog();
+  fn = jit_emit();
+  jit_disassemble();
+}
+
 void print_code(PT_NODE *node)
 {
   int reg_num = node->reg_num;
@@ -64,7 +127,7 @@ void print_code(PT_NODE *node)
     printf("R%d <- %d\n", reg_num, node->operand);
   } else {
     char *op = operators[node->type];
-    if (-1 == node->right->reg_num) {
+    if (T_OPERAND == node->right->type) {
       print_code(node->left);
       printf("R%d <- R%d %s %d\n", reg_num, reg_num, op, node->right->operand);
     } else {
