@@ -8,16 +8,19 @@
 
 #define YYSTYPE PT_NODE *
 
+char *argv0 = NULL;
+
 %}
 
 stmt = WS e:sum EOL
-       {
+       { compiled_expr_fn fn;
          int max_reg = -1;
          assign_registers(e, 0, &max_reg);
          printf("Number of registers needed = %d\n", max_reg + 1);
          print_tree(e, 0);
          printf("\n");
-         print_code(e);
+         fn = compile_tree(e, argv0);
+         printf("RESULT = %d\n", (*fn)());
          free_tree(e);
        }
      | (!EOL . )* EOL
@@ -90,8 +93,9 @@ RPAREN = WS ')' WS
 
 %%
 
-int main()
+int main(int argc, char *argv[])
 {
+  argv0 = argv[0];
   while (yyparse()) {
     printf("--------------------\n");
     continue;

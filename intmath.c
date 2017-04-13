@@ -95,14 +95,20 @@ void tree_walk(PT_NODE *node)
 {
   int dest_reg = regs[node->reg_num];
   if (T_OPERAND == node->type) {
+    printf("R%d <- %d\n", dest_reg, node->operand);
     jit_movi(dest_reg, node->operand);
   } else {
+    char *op = operators[node->type];
     if (T_OPERAND == node->right->type) {
       tree_walk(node->left);
+      printf("R%d <- R%d %s %d\n", dest_reg, dest_reg, op,
+             node->right->operand);
       GEN_OP(i, node, dest_reg, node->right->operand);
     } else {
       tree_walk(node->right);
       tree_walk(node->left);
+      printf("R%d <- R%d %s R%d\n", dest_reg, dest_reg, op,
+             node->right->reg_num);
       GEN_OP(r, node, dest_reg, regs[node->right->reg_num]);
     }
   }
@@ -115,27 +121,11 @@ compiled_expr_fn compile_tree(PT_NODE *node, char *argv0)
   _jit = jit_new_state();
   jit_prolog();
   tree_walk(node);
+  jit_retr(regs[0]);
   jit_epilog();
   fn = jit_emit();
   jit_disassemble();
-}
-
-void print_code(PT_NODE *node)
-{
-  int reg_num = node->reg_num;
-  if (T_OPERAND == node->type) {
-    printf("R%d <- %d\n", reg_num, node->operand);
-  } else {
-    char *op = operators[node->type];
-    if (T_OPERAND == node->right->type) {
-      print_code(node->left);
-      printf("R%d <- R%d %s %d\n", reg_num, reg_num, op, node->right->operand);
-    } else {
-      print_code(node->right);
-      print_code(node->left);
-      printf("R%d <- R%d %s R%d\n", reg_num, reg_num, op, node->right->reg_num);
-    }
-  }
+  return fn;
 }
 
 void print_tree(PT_NODE *node, int lev)
