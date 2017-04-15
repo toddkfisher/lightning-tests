@@ -93,23 +93,24 @@ do {                                                         \
 
 void tree_walk(PT_NODE *node)
 {
-  int dest_reg = regs[node->reg_num];
+  int jit_dest_reg = regs[node->reg_num],
+    pr_dest_reg = node->reg_num;
   if (T_OPERAND == node->type) {
-    printf("R%d <- %d\n", dest_reg, node->operand);
-    jit_movi(dest_reg, node->operand);
+    printf("R%d <- %d\n", pr_dest_reg, node->operand);
+    jit_movi(jit_dest_reg, node->operand);
   } else {
     char *op = operators[node->type];
     if (T_OPERAND == node->right->type) {
       tree_walk(node->left);
-      printf("R%d <- R%d %s %d\n", dest_reg, dest_reg, op,
+      printf("R%d <- R%d %s %d\n", pr_dest_reg, pr_dest_reg, op,
              node->right->operand);
-      GEN_OP(i, node, dest_reg, node->right->operand);
+      GEN_OP(i, node, jit_dest_reg, node->right->operand);
     } else {
       tree_walk(node->right);
       tree_walk(node->left);
-      printf("R%d <- R%d %s R%d\n", dest_reg, dest_reg, op,
+      printf("R%d <- R%d %s R%d\n", pr_dest_reg, pr_dest_reg, op,
              node->right->reg_num);
-      GEN_OP(r, node, dest_reg, regs[node->right->reg_num]);
+      GEN_OP(r, node, jit_dest_reg, regs[node->right->reg_num]);
     }
   }
 }
@@ -134,11 +135,11 @@ void print_tree(PT_NODE *node, int lev)
   while (indent--) {
     printf(" ");
   }
-  printf("[%02d] ", lev);
+  printf("[%1d] ", lev);
   if (-1 == node->reg_num) {
     printf("Imm : ");
   } else {
-    printf("R%02d : ", node->reg_num);
+    printf("R%1d : ", node->reg_num);
   }
   switch (node->type) {
     case T_ADD:

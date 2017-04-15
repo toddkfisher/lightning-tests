@@ -13,10 +13,12 @@ char *argv0 = NULL;
 %}
 
 stmt = WS e:sum EOL
-       { compiled_expr_fn fn;
+       {
+         compiled_expr_fn fn;
          int max_reg = -1;
          assign_registers(e, 0, &max_reg);
          printf("Number of registers needed = %d\n", max_reg + 1);
+         printf("Parse tree : \n");
          print_tree(e, 0);
          printf("\n");
          fn = compile_tree(e, argv0);
@@ -24,7 +26,9 @@ stmt = WS e:sum EOL
          free_tree(e);
        }
      | (!EOL . )* EOL
-       { printf("error\n"); }
+       {
+         printf("error\n");
+       }
 
 expr = sum
 
@@ -76,6 +80,7 @@ factor = LPAREN e:expr RPAREN
          {
            $$ = i;
          }
+
 INT = <(MINUS | PLUS)? [0-9]+>
       {
         PT_NODE *node = new_node(T_OPERAND);
@@ -96,9 +101,12 @@ RPAREN = WS ')' WS
 int main(int argc, char *argv[])
 {
   argv0 = argv[0];
-  while (yyparse()) {
+  for (;;) {
+    printf("expr>");
+    if (!yyparse()) {
+      break;
+    }
     printf("--------------------\n");
-    continue;
   }
   return 0;
 }
